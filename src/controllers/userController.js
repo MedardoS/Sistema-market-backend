@@ -3,78 +3,62 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 export const registerUser = async (req, res) => {
-
   try {
+    const { name, phone, email, password } = req.body;
 
-    const {
-      name,
-      email,
-      password,
-    } = req.body;
-
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const query = `
       INSERT INTO users
-      (name, email, password)
-      VALUES ($1, $2, $3)
-      RETURNING id, name, email
+      (name, phone, email, password)
+      VALUES ($1, $2, $3, $4)
+      RETURNING
+      id,
+      name,
+      phone,
+      email
     `;
 
-    const values = [
-      name,
-      email,
-      hashedPassword,
-    ];
+    const values = [name, phone, email, hashedPassword];
 
-    const result =
-      await pool.query(query, values);
+    const result = await pool.query(query, values);
 
     res.status(201).json({
       message: "Usuario registrado",
       user: result.rows[0],
     });
-
   } catch (error) {
-
+    console.log("ERROR REGISTER:");
     console.log(error);
 
     res.status(500).json({
-      error: "Error al registrar",
+      error: error.message,
     });
-
   }
-
 };
 
 export const loginUser = async (req, res) => {
-
   try {
-
-    const {
-      email,
-      password,
-    } = req.body;
+    const { email, password } = req.body;
 
     const result = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
+      `
+        SELECT *
+        FROM users
+        WHERE email = $1
+        `,
+      [email],
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: "Usuario no existe",
-      });
-    }
 
     const user = result.rows[0];
 
-    const validPassword =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+    if (!user) {
+      return res.status(404).json({
+        error: "Usuario no encontrado",
+      });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
       return res.status(401).json({
@@ -89,23 +73,19 @@ export const loginUser = async (req, res) => {
       },
       "secreto",
       {
-        expiresIn: "1h",
-      }
+        expiresIn: "24h",
+      },
     );
 
     res.json({
       message: "Login exitoso",
       token,
     });
-
   } catch (error) {
-
     console.log(error);
 
     res.status(500).json({
-      error: "Error login",
+      error: "Error en login",
     });
-
   }
-
 };
