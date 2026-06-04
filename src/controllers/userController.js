@@ -6,7 +6,10 @@ export const registerUser = async (req, res) => {
   try {
     const { name, phone, email, password } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(
+      password,
+      10
+    );
 
     const query = `
       INSERT INTO users
@@ -16,76 +19,109 @@ export const registerUser = async (req, res) => {
       id,
       name,
       phone,
-      email
+      email,
+      role
     `;
 
-    const values = [name, phone, email, hashedPassword];
+    const values = [
+      name,
+      phone,
+      email,
+      hashedPassword,
+    ];
 
-    const result = await pool.query(query, values);
+    const result = await pool.query(
+      query,
+      values
+    );
 
     res.status(201).json({
       message: "Usuario registrado",
       user: result.rows[0],
     });
+
   } catch (error) {
+
     console.log("ERROR REGISTER:");
     console.log(error);
 
     res.status(500).json({
       error: error.message,
     });
+
   }
 };
 
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+
+    const { email, password } =
+      req.body;
 
     const result = await pool.query(
       `
-        SELECT *
-        FROM users
-        WHERE email = $1
-        `,
-      [email],
+      SELECT *
+      FROM users
+      WHERE email = $1
+      `,
+      [email]
     );
 
-    const user = result.rows[0];
+    const user =
+      result.rows[0];
 
     if (!user) {
+
       return res.status(404).json({
-        error: "Usuario no encontrado",
+        error:
+          "Usuario no encontrado",
       });
+
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!validPassword) {
+
       return res.status(401).json({
-        error: "Contraseña incorrecta",
+        error:
+          "Contraseña incorrecta",
       });
+
     }
 
     const token = jwt.sign(
       {
         id: user.id,
         email: user.email,
+        role: user.role,
       },
       "secreto",
       {
         expiresIn: "24h",
-      },
+      }
     );
 
     res.json({
-      message: "Login exitoso",
+      message:
+        "Login exitoso",
       token,
+      role:
+        user.role,
     });
+
   } catch (error) {
+
     console.log(error);
 
     res.status(500).json({
-      error: "Error en login",
+      error:
+        "Error en login",
     });
+
   }
 };
